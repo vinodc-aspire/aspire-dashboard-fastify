@@ -1,6 +1,6 @@
 import { pgSchema, bigserial, varchar, integer, timestamp, doublePrecision } from "drizzle-orm/pg-core"
 
-export const api = pgSchema("api");
+const api = pgSchema("api");
 
 export const leaderboardInApi = api.table("leaderboard", {
 	id: bigserial({ mode: "bigint" }).primaryKey().notNull(),

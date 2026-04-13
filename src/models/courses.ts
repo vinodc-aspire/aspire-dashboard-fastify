@@ -1,7 +1,7 @@
 import { pgSchema, foreignKey, bigserial, bigint, varchar, json, integer, timestamp, boolean, index, unique, text, smallint } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
-export const api = pgSchema("api");
+const api = pgSchema("api");
 
 export const coursesInApi = api.table("courses", {
 	id: bigserial({ mode: "bigint" }).primaryKey().notNull(),
