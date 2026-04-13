@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { NodePgDatabase } from 'drizzle-orm/node-postgres'
-import { emailFilter } from './filters'
+import { emailFilter, testAccountFilter } from './filters'
 
 export async function getTeacherReport(db: NodePgDatabase, startDate: string, endDate: string) {
   const start = new Date(startDate)
@@ -21,6 +21,7 @@ export async function getTeacherReport(db: NodePgDatabase, startDate: string, en
       WHERE u.role = 'teacher' AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL
         AND u.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
         ${emailFilter}
+        ${testAccountFilter}
       GROUP BY u.id
     ),
     lesson_assignments AS (
@@ -56,6 +57,7 @@ export async function getTeacherReport(db: NodePgDatabase, startDate: string, en
       WHERE u.role = 'teacher' AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL
         AND u.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
         ${emailFilter}
+        ${testAccountFilter}
       GROUP BY u.id
     )
     SELECT u.id as teacher_id,
@@ -77,6 +79,7 @@ export async function getTeacherReport(db: NodePgDatabase, startDate: string, en
     WHERE u.role = 'teacher' AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL
       AND u.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
       ${emailFilter}
+      ${testAccountFilter}
     ORDER BY u.email
   `
 

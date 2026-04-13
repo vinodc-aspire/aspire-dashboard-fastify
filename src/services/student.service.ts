@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { NodePgDatabase } from 'drizzle-orm/node-postgres'
-import { emailFilter } from './filters'
+import { emailFilter, testAccountFilter } from './filters'
 
 export async function getStudentReport(db: NodePgDatabase, startDate: string, endDate: string) {
   const startISO = new Date(startDate).toISOString()
@@ -22,6 +22,7 @@ export async function getStudentReport(db: NodePgDatabase, startDate: string, en
     LEFT JOIN student_progress sp ON u.id = sp.user_id AND h.id = sp.homework_id
     WHERE u.created_at BETWEEN '${startISO}' AND '${endISO}'
       ${emailFilter}
+      ${testAccountFilter}
     GROUP BY u.id, u.email, asd.student_name
   `
 

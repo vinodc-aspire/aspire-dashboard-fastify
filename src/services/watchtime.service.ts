@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { NodePgDatabase } from 'drizzle-orm/node-postgres'
-import { emailFilter } from './filters'
+import { emailFilter, testAccountFilter } from './filters'
 
 export async function getWatchtimeReport(db: NodePgDatabase, startDate: string, endDate: string) {
   const start = new Date(startDate)
@@ -20,6 +20,7 @@ export async function getWatchtimeReport(db: NodePgDatabase, startDate: string, 
       WHERE u.deleted_at IS NULL
         AND lp.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
         ${emailFilter}
+        ${testAccountFilter}
         AND u.verified_at IS NOT NULL
       GROUP BY u.id, asd.school_code
     ),
@@ -48,6 +49,7 @@ export async function getWatchtimeReport(db: NodePgDatabase, startDate: string, 
       WHERE u.deleted_at IS NULL
         AND sp.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
         ${emailFilter}
+        ${testAccountFilter}
       GROUP BY u.id, u.email, u.created_at
     )
     SELECT COALESCE(q1.id, q2.student_id) AS user_id, COALESCE(q1.email, q2.email) AS email,
@@ -98,6 +100,7 @@ export async function getZeroActivityReport(db: NodePgDatabase, startDate: strin
     WHERE u.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
       AND u.verified_at IS NOT NULL AND u.deleted_at IS NULL
       ${emailFilter}
+      ${testAccountFilter}
       AND NOT EXISTS (
         SELECT 1 FROM student_progress sp
         WHERE sp.user_id = u.id AND sp.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'

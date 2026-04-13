@@ -3,7 +3,7 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import dayjs from 'dayjs'
 import weekOfYear from 'dayjs/plugin/weekOfYear'
 import isoWeek from 'dayjs/plugin/isoWeek'
-import { emailFilter } from './filters'
+import { emailFilter, testAccountFilter } from './filters'
 
 dayjs.extend(weekOfYear)
 dayjs.extend(isoWeek)
@@ -21,6 +21,7 @@ export async function getDashboardStats(db: NodePgDatabase, startDate: string, e
     WHERE u.deleted_at IS NULL
       AND lp.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
       ${emailFilter}
+      ${testAccountFilter}
       AND p.deleted_at IS NULL
       AND l.deleted_at IS NULL
       AND u.verified_at IS NOT NULL
@@ -33,6 +34,7 @@ export async function getDashboardStats(db: NodePgDatabase, startDate: string, e
     WHERE u.deleted_at IS NULL
       AND sp.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
       ${emailFilter}
+      ${testAccountFilter}
       AND u.verified_at IS NOT NULL
   `
   const classroomsQuery = `
@@ -43,6 +45,7 @@ export async function getDashboardStats(db: NodePgDatabase, startDate: string, e
       AND u.verified_at IS NOT NULL
       AND c.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
       ${emailFilter}
+      ${testAccountFilter}
   `
   const homeworksQuery = `
     SELECT COUNT(*) as total
@@ -51,6 +54,7 @@ export async function getDashboardStats(db: NodePgDatabase, startDate: string, e
     JOIN users u ON c.teacher_id = u.id
     WHERE h.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
       ${emailFilter}
+      ${testAccountFilter}
   `
 
   const [courseWatchtime, homeworkWatchtime, classrooms, homeworks] = await Promise.all([
@@ -108,6 +112,7 @@ export async function getChartData(db: NodePgDatabase, type: string, period: str
       FROM users u
       WHERE u.created_at >= NOW() - INTERVAL '${interval}' AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL
       ${emailFilter}
+      ${testAccountFilter}
       GROUP BY period ORDER BY period`
     const results = await db.execute(sql.raw(query))
     const data = processResults(results.rows as Record<string, unknown>[], 'count')
@@ -121,6 +126,7 @@ export async function getChartData(db: NodePgDatabase, type: string, period: str
     JOIN users u ON sp.user_id = u.id
     WHERE sp.created_at >= NOW() - INTERVAL '${interval}' AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL
     ${emailFilter}
+    ${testAccountFilter}
     GROUP BY period ORDER BY period`
   const courseQuery = `
     SELECT DATE_TRUNC('${dateTrunc}', lp.created_at) as period, SUM(((CAST(lp.watched AS numeric) * CAST(l.duration as numeric)) / 100)/3600) as total_hours
@@ -130,6 +136,7 @@ export async function getChartData(db: NodePgDatabase, type: string, period: str
     JOIN lessons l ON lp.lesson_id = l.id
     WHERE lp.created_at >= NOW() - INTERVAL '${interval}' AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL AND p.deleted_at IS NULL AND l.deleted_at IS NULL
     ${emailFilter}
+    ${testAccountFilter}
     GROUP BY period ORDER BY period`
 
   const [homeworkResults, courseResults] = await Promise.all([

@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { NodePgDatabase } from 'drizzle-orm/node-postgres'
-import { emailFilter } from './filters'
+import { emailFilter, testAccountFilter } from './filters'
 
 function formatMinutesToHours(totalMinutes: number | null): string {
   if (totalMinutes === null || isNaN(totalMinutes as number)) return '0 Hr 0 Min'
@@ -32,11 +32,13 @@ export async function getUserDataReport(db: NodePgDatabase, startDate: string, e
         JOIN profiles p ON lp.profile_id = p.id JOIN users u ON p.user_id = u.id
         WHERE lp.created_at BETWEEN '${startStr}' AND '${endStr}'
           AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL ${emailFilter}
+          ${testAccountFilter}
       ), 0) +
       COALESCE((SELECT SUM(CAST(l.duration AS numeric) / 60)
         FROM student_progress sp JOIN lessons l ON sp.lesson_id = l.id JOIN users u ON sp.user_id = u.id
         WHERE sp.created_at BETWEEN '${startStr}' AND '${endStr}'
           AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL ${emailFilter}
+          ${testAccountFilter}
       ), 0) AS "lastWeekWatchMinutes"
   `
 
@@ -47,11 +49,13 @@ export async function getUserDataReport(db: NodePgDatabase, startDate: string, e
         JOIN profiles p ON lp.profile_id = p.id JOIN users u ON p.user_id = u.id
         WHERE lp.created_at BETWEEN '${cumulativeStartStr}' AND '${endStr}'
           AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL ${emailFilter}
+          ${testAccountFilter}
       ), 0) +
       COALESCE((SELECT SUM(CAST(l.duration AS numeric) / 60)
         FROM student_progress sp JOIN lessons l ON sp.lesson_id = l.id JOIN users u ON sp.user_id = u.id
         WHERE sp.created_at BETWEEN '${cumulativeStartStr}' AND '${endStr}'
           AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL ${emailFilter}
+          ${testAccountFilter}
       ), 0) AS "totalWatchMinutes"
   `
 
@@ -60,6 +64,7 @@ export async function getUserDataReport(db: NodePgDatabase, startDate: string, e
     FROM users u
     WHERE u.created_at BETWEEN '${startStr}' AND '${endStr}'
       AND u.deleted_at IS NULL ${emailFilter}
+      ${testAccountFilter}
   `
 
   const cumulativeUsersQuery = `
@@ -67,6 +72,7 @@ export async function getUserDataReport(db: NodePgDatabase, startDate: string, e
     FROM users u
     WHERE u.created_at BETWEEN '${cumulativeStartStr}' AND '${cumulativeEndStr}'
       AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL ${emailFilter}
+      ${testAccountFilter}
   `
 
   const [lastWeekWatchResult, totalWatchResult, weeklyUsersResult, cumulativeUsersResult] = await Promise.all([

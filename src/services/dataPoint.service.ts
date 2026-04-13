@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { NodePgDatabase } from 'drizzle-orm/node-postgres'
-import { emailFilter } from './filters'
+import { emailFilter, testAccountFilter } from './filters'
 
 function formatMinutesToHours(totalMinutes: number | null): string {
   if (totalMinutes === null || isNaN(totalMinutes)) return '0 Hr 0 Min'
@@ -20,17 +20,20 @@ export async function getDataPointReport(db: NodePgDatabase, startDate: string, 
         JOIN classrooms c ON h.classroom_id = c.id JOIN users u ON c.teacher_id = u.id
         WHERE h.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
           AND c.deleted_at IS NULL ${emailFilter}
+          ${testAccountFilter}
       ) as "totalHomeworkCreated",
       (SELECT SUM(((CAST(lp.watched AS numeric) * CAST(l.duration as numeric)) / 100) / 60)
         FROM lesson_profile lp JOIN lessons l ON lp.lesson_id = l.id
         JOIN profiles p ON lp.profile_id = p.id JOIN users u ON p.user_id = u.id
         WHERE lp.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
           AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL ${emailFilter}
+          ${testAccountFilter}
       ) as "courseLibraryWatchTime",
       (SELECT SUM(CAST(l.duration AS numeric) / 60)
         FROM student_progress sp JOIN lessons l ON sp.lesson_id = l.id JOIN users u ON sp.user_id = u.id
         WHERE sp.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
           AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL ${emailFilter}
+          ${testAccountFilter}
       ) as "homeworkWatchTime"
   `
 
@@ -40,6 +43,7 @@ export async function getDataPointReport(db: NodePgDatabase, startDate: string, 
     FROM users u LEFT JOIN additional_signup_data asd ON u.id = asd.user_id
     WHERE u.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
       AND u.verified_at IS NOT NULL AND u.deleted_at IS NULL ${emailFilter}
+      ${testAccountFilter}
   `
 
   const cumulativeUsersQuery = `
@@ -47,6 +51,7 @@ export async function getDataPointReport(db: NodePgDatabase, startDate: string, 
     FROM users u
     WHERE u.created_at >= '2024-09-01T00:00:00.000Z' AND u.created_at <= '${end.toISOString()}'
       AND u.verified_at IS NOT NULL AND u.deleted_at IS NULL ${emailFilter}
+      ${testAccountFilter}
   `
 
   const [metricsResult, weeklyUsersResult, cumulativeUsersResult] = await Promise.all([
