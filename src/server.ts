@@ -4,6 +4,15 @@ import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox'
 import { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import drizzlePlugin from './plugins/drizzle'
 import { healthRoutes } from './routes/health.routes'
+import { dashboardRoutes } from './routes/dashboard.routes'
+import { usersRoutes } from './routes/users.routes'
+import { classroomRoutes } from './routes/classroom.routes'
+import { teacherRoutes } from './routes/teacher.routes'
+import { studentRoutes } from './routes/student.routes'
+import { watchtimeRoutes } from './routes/watchtime.routes'
+import { leaderboardRoutes } from './routes/leaderboard.routes'
+import { dataPointRoutes } from './routes/dataPoint.routes'
+import { dataUserRoutes } from './routes/dataUser.routes'
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -38,7 +47,15 @@ export async function buildServer() {
 
   app.register(healthRoutes)
 
-  // Route modules will be added here in subsequent tasks
+  app.register(dashboardRoutes, { prefix: '/api' })
+  app.register(usersRoutes, { prefix: '/api' })
+  app.register(classroomRoutes, { prefix: '/api' })
+  app.register(teacherRoutes, { prefix: '/api' })
+  app.register(studentRoutes, { prefix: '/api' })
+  app.register(watchtimeRoutes, { prefix: '/api' })
+  app.register(leaderboardRoutes, { prefix: '/api' })
+  app.register(dataPointRoutes, { prefix: '/api' })
+  app.register(dataUserRoutes, { prefix: '/api' })
 
   app.setNotFoundHandler((request, reply) => {
     reply.status(404).send({
