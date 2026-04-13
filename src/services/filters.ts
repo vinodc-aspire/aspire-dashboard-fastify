@@ -1,0 +1,15 @@
+export const emailFilter = `
+  AND u.email NOT LIKE '%@landau%'
+  AND u.email NOT LIKE '%iosdev%'
+  AND u.email NOT LIKE '%+%'
+  AND u.email NOT LIKE '%andtech777%'
+  AND u.email NOT LIKE '%andteacher656%'
+  AND u.email NOT LIKE '%leoxxiii.xxiii7@gmail.com%'
+  AND u.email NOT LIKE '%ayxancvn@gmail.com%'
+  AND u.email NOT LIKE '%sherin.real1@gmail.com%'
+  AND u.email NOT LIKE '%xacoyo4199%'
+  AND u.email NOT LIKE '%aspiretesting.live%'
+  AND u.email NOT LIKE '%leaderboard630@gmail.com%'
+  AND u.email NOT LIKE '%xetai.student@mail.ru%'
+  AND u.email NOT LIKE '%nojon29278%'
+`
