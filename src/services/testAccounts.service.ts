@@ -1,0 +1,101 @@
+import { sql } from 'drizzle-orm'
+import { NodePgDatabase } from 'drizzle-orm/node-postgres'
+import bcrypt from 'bcryptjs'
+
+export async function getTestAccounts(db: NodePgDatabase) {
+  const result = await db.execute(sql.raw(`
+    SELECT u.id, u.email, asd.student_name AS name, u.role, asd.curriculum_id, u.created_at
+    FROM users u
+    LEFT JOIN additional_signup_data asd ON u.id = asd.user_id
+    WHERE u.is_testaccount = true
+    ORDER BY u.created_at DESC
+  `))
+  return (result.rows as Record<string, unknown>[]).map(row => ({
+    id: String(row.id),
+    email: row.email,
+    name: row.name || row.email,
+    role: row.role,
+    curriculum_id: row.curriculum_id,
+    created_at: row.created_at,
+  }))
+}
+
+export async function searchUserByEmail(db: NodePgDatabase, email: string) {
+  const result = await db.execute(sql`
+    SELECT u.id, u.email, asd.student_name AS name, u.role
+    FROM users u
+    LEFT JOIN additional_signup_data asd ON u.id = asd.user_id
+    WHERE u.email = ${email}
+      AND u.deleted_at IS NULL
+    LIMIT 1
+  `)
+  if (!result.rows.length) return null
+  const row = result.rows[0] as Record<string, unknown>
+  return {
+    id: String(row.id),
+    email: row.email,
+    name: row.name || row.email,
+    role: row.role,
+  }
+}
+
+export async function createTestAccount(
+  db: NodePgDatabase,
+  data: { email: string; password: string; name: string; role: string; curriculum: number }
+) {
+  const { email, password, name, role, curriculum } = data
+
+  // Check for duplicate email
+  const existing = await db.execute(sql`
+    SELECT id FROM users WHERE email = ${email} LIMIT 1
+  `)
+  if (existing.rows.length > 0) {
+    const err = new Error('Email already registered') as Error & { statusCode: number }
+    err.statusCode = 400
+    throw err
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10)
+
+  // Insert user
+  const userResult = await db.execute(sql`
+    INSERT INTO users (email, password, role, is_testaccount, verified_at, created_at, updated_at)
+    VALUES (${email}, ${hashedPassword}, ${role}, true, NOW(), NOW(), NOW())
+    RETURNING id
+  `)
+  const userId = (userResult.rows[0] as { id: bigint }).id
+
+  // Insert additional_signup_data
+  await db.execute(sql`
+    INSERT INTO additional_signup_data (user_id, student_name, curriculum_id, created_at, updated_at)
+    VALUES (${userId}, ${name}, ${curriculum}, NOW(), NOW())
+  `)
+
+  // Insert profile
+  await db.execute(sql`
+    INSERT INTO profiles (user_id, name, created_at, updated_at)
+    VALUES (${userId}, ${name}, NOW(), NOW())
+  `)
+
+  return { id: String(userId), email, name, role, curriculum_id: curriculum }
+}
+
+export async function toggleTestAccount(
+  db: NodePgDatabase,
+  userId: string,
+  isTestAccount: boolean
+) {
+  const result = await db.execute(sql`
+    UPDATE users
+    SET is_testaccount = ${isTestAccount}, updated_at = NOW()
+    WHERE id = ${BigInt(userId)}
+    RETURNING id, email, is_testaccount
+  `)
+  if (!result.rows.length) {
+    const err = new Error('User not found') as Error & { statusCode: number }
+    err.statusCode = 404
+    throw err
+  }
+  const row = result.rows[0] as Record<string, unknown>
+  return { id: String(row.id), email: row.email, is_testaccount: row.is_testaccount }
+}
