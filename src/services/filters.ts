@@ -13,3 +13,5 @@ export const emailFilter = `
   AND u.email NOT LIKE '%xetai.student@mail.ru%'
   AND u.email NOT LIKE '%nojon29278%'
 `
+
+export const testAccountFilter = `AND u.is_testaccount = false`
