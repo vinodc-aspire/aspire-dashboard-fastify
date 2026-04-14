@@ -3,7 +3,7 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import dayjs from 'dayjs'
 import weekOfYear from 'dayjs/plugin/weekOfYear'
 import isoWeek from 'dayjs/plugin/isoWeek'
-import { emailFilter, testAccountFilter } from './filters'
+import { testAccountFilter } from './filters'
 
 dayjs.extend(weekOfYear)
 dayjs.extend(isoWeek)
@@ -20,7 +20,6 @@ export async function getDashboardStats(db: NodePgDatabase, startDate: string, e
     JOIN lessons l ON lp.lesson_id = l.id
     WHERE u.deleted_at IS NULL
       AND lp.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
-      ${emailFilter}
       ${testAccountFilter}
       AND p.deleted_at IS NULL
       AND l.deleted_at IS NULL
@@ -33,7 +32,6 @@ export async function getDashboardStats(db: NodePgDatabase, startDate: string, e
     JOIN users u ON sp.user_id = u.id
     WHERE u.deleted_at IS NULL
       AND sp.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
-      ${emailFilter}
       ${testAccountFilter}
       AND u.verified_at IS NOT NULL
   `
@@ -44,7 +42,6 @@ export async function getDashboardStats(db: NodePgDatabase, startDate: string, e
     WHERE u.deleted_at IS NULL
       AND u.verified_at IS NOT NULL
       AND c.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
-      ${emailFilter}
       ${testAccountFilter}
   `
   const homeworksQuery = `
@@ -53,7 +50,6 @@ export async function getDashboardStats(db: NodePgDatabase, startDate: string, e
     JOIN classrooms c ON h.classroom_id = c.id
     JOIN users u ON c.teacher_id = u.id
     WHERE h.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
-      ${emailFilter}
       ${testAccountFilter}
   `
 
@@ -111,7 +107,6 @@ export async function getChartData(db: NodePgDatabase, type: string, period: str
       SELECT DATE_TRUNC('${dateTrunc}', u.created_at) as period, COUNT(*) as count
       FROM users u
       WHERE u.created_at >= NOW() - INTERVAL '${interval}' AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL
-      ${emailFilter}
       ${testAccountFilter}
       GROUP BY period ORDER BY period`
     const results = await db.execute(sql.raw(query))
@@ -125,7 +120,6 @@ export async function getChartData(db: NodePgDatabase, type: string, period: str
     JOIN lessons l ON sp.lesson_id = l.id
     JOIN users u ON sp.user_id = u.id
     WHERE sp.created_at >= NOW() - INTERVAL '${interval}' AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL
-    ${emailFilter}
     ${testAccountFilter}
     GROUP BY period ORDER BY period`
   const courseQuery = `
@@ -135,7 +129,6 @@ export async function getChartData(db: NodePgDatabase, type: string, period: str
     JOIN lesson_profile lp ON p.id = lp.profile_id
     JOIN lessons l ON lp.lesson_id = l.id
     WHERE lp.created_at >= NOW() - INTERVAL '${interval}' AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL AND p.deleted_at IS NULL AND l.deleted_at IS NULL
-    ${emailFilter}
     ${testAccountFilter}
     GROUP BY period ORDER BY period`
 

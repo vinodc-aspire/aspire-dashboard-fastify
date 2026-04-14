@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { NodePgDatabase } from 'drizzle-orm/node-postgres'
-import { emailFilter, testAccountFilter } from './filters'
+import { testAccountFilter } from './filters'
 
 export async function getTeacherReport(db: NodePgDatabase, startDate: string, endDate: string) {
   const start = new Date(startDate)
@@ -20,7 +20,6 @@ export async function getTeacherReport(db: NodePgDatabase, startDate: string, en
       LEFT JOIN homework_lesson hl ON h.id = hl.homework_id
       WHERE u.role = 'teacher' AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL
         AND u.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
-        ${emailFilter}
         ${testAccountFilter}
       GROUP BY u.id
     ),
@@ -56,7 +55,6 @@ export async function getTeacherReport(db: NodePgDatabase, startDate: string, en
       LEFT JOIN homeworks h ON c.id = h.classroom_id
       WHERE u.role = 'teacher' AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL
         AND u.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
-        ${emailFilter}
         ${testAccountFilter}
       GROUP BY u.id
     )
@@ -78,7 +76,6 @@ export async function getTeacherReport(db: NodePgDatabase, startDate: string, en
     LEFT JOIN homeworks_created hc ON u.id = hc.teacher_id
     WHERE u.role = 'teacher' AND u.deleted_at IS NULL AND u.verified_at IS NOT NULL
       AND u.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
-      ${emailFilter}
       ${testAccountFilter}
     ORDER BY u.email
   `

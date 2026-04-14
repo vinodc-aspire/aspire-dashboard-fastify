@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { NodePgDatabase } from 'drizzle-orm/node-postgres'
-import { emailFilter, testAccountFilter } from './filters'
+import { testAccountFilter } from './filters'
 
 function formatDateForPostgres(date: Date): string {
   const pad = (num: number) => String(num).padStart(2, '0')
@@ -31,7 +31,6 @@ export async function getAllUsers(db: NodePgDatabase, startDate: string, endDate
     LEFT JOIN profiles p ON u.id = p.user_id
     WHERE u.created_at BETWEEN '${startStr}' AND '${endStr}'
     AND u.deleted_at IS NULL
-    ${emailFilter}
     ${testAccountFilter}
     GROUP BY u.id, u.email, u.created_at, u.updated_at
     ORDER BY u.created_at DESC

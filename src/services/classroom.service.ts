@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { NodePgDatabase } from 'drizzle-orm/node-postgres'
-import { emailFilter, testAccountFilter } from './filters'
+import { testAccountFilter } from './filters'
 
 export async function getClassroomReport(db: NodePgDatabase, startDate: string, endDate: string) {
   const start = new Date(startDate)
@@ -46,7 +46,6 @@ export async function getClassroomReport(db: NodePgDatabase, startDate: string, 
     LEFT JOIN classroom_completion cc ON c.id = cc.classroom_id
     WHERE u.deleted_at IS NULL AND u.verified_at IS NOT NULL
       AND c.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
-      ${emailFilter}
       ${testAccountFilter}
     GROUP BY c.id, c.name, u.email, cc.avg_completion_rate, asd.student_name
     ORDER BY c.id
