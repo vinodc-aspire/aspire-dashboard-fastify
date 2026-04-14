@@ -36,17 +36,17 @@ export async function searchUser(
 
 export async function createTestAccount(
   request: FastifyRequest<{
-    Body: { email: string; password: string; name: string; role: string; curriculum: number }
+    Body: { email: string; password: string; name: string; role: string; curriculum: number; grade?: number }
   }>,
   reply: FastifyReply
 ) {
-  const { email, password, name, role, curriculum } = request.body
+  const { email, password, name, role, curriculum, grade } = request.body
   if (!email || !password || !name || !role || curriculum == null) {
     return reply.status(400).send({ error: 'email, password, name, role, and curriculum are required' })
   }
   try {
     const account = await testAccountsService.createTestAccount(request.server.db, {
-      email, password, name, role, curriculum,
+      email, password, name, role, curriculum, grade,
     })
     reply.status(201).send(account)
   } catch (error) {
