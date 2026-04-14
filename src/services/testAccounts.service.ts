@@ -68,13 +68,13 @@ export async function createTestAccount(
   // Insert additional_signup_data (NOT NULL columns require placeholder values for test accounts)
   await db.execute(sql`
     INSERT INTO additional_signup_data (user_id, student_name, curriculum_id, user_type, subjects, school_year, age, purpose, interesting_activities, created_at, updated_at)
-    VALUES (${userId}, ${name}, ${curriculum}, 'student', '[]', ${grade ?? 1}, 0, '[]', '[]', NOW(), NOW())
+    VALUES (${userId}::bigint, ${name}, ${curriculum}, ${role}, '[]', ${grade ?? 1}, 0, '[]', '[]', NOW(), NOW())
   `)
 
   // Insert profile (gender and born_at are NOT NULL with no defaults)
   await db.execute(sql`
     INSERT INTO profiles (user_id, name, class, gender, born_at, created_at, updated_at)
-    VALUES (${userId}, ${name}, ${grade ?? 1}, false, '2000-01-01', NOW(), NOW())
+    VALUES (${userId}::bigint, ${name}, ${grade ?? 1}, false, '2000-01-01', NOW(), NOW())
   `)
 
   return { id: String(userId), email, name, role, curriculum_id: curriculum, created_at: new Date() }

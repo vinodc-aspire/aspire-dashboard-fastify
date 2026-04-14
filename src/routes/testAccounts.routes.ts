@@ -53,7 +53,7 @@ export const testAccountsRoutes: FastifyPluginAsyncTypebox = async (app) => {
         name: Type.String(),
         role: Type.String(),
         curriculum: Type.Number(),
-        grade: Type.Optional(Type.Number()),
+        grade: Type.Optional(Type.Integer({ minimum: 1, maximum: 11 })),
       }),
       response: {
         201: TestAccountRow,
