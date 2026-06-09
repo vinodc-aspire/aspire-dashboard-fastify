@@ -4,9 +4,9 @@ dotenv.config();
 
 export default defineConfig({
   dialect: "postgresql",
-  schema: "./src/models/index.ts",
-  out: "./drizzle",
-  schemaFilter: ["api"],
+  schema: "./src/models/schema.ts",
+  out: "./src/models",
+  schemaFilter: ["nodeapi"],
   dbCredentials: {
     url: process.env.DATABASE_URL!,
     // remove ssl entirely
