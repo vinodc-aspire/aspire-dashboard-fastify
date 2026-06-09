@@ -47,7 +47,7 @@ export async function buildServer() {
   await app.register(drizzlePlugin, {
     url: process.env.DATABASE_URL!,
     poolConfig: {
-      options: "--search_path=api",
+      options: "--search_path=nodeapi",
     },
   });
 
