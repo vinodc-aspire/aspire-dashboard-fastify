@@ -18,21 +18,21 @@ export async function getAllUsers(db: NodePgDatabase, startDate: string, endDate
   const query = `
     SELECT
       u.id,
-      u.email,
-      MAX(COALESCE(asd.student_name, p.name)) AS name,
+      COALESCE(NULLIF(u.email, ''), u.phone) AS email,
+      MAX(p.name) AS name,
       MAX(CASE WHEN LOWER(u.role) = 'teacher' THEN 'Teacher' ELSE 'Student' END) AS user_type,
       MAX(CASE WHEN u.deleted_at IS NOT NULL THEN 'Deleted' WHEN u.verified_at IS NULL THEN 'Not verified' ELSE 'Active' END) AS status,
       u.created_at,
       u.updated_at,
-      MAX(CASE WHEN asd.curriculum_id = 1 OR asd.curriculum_id IS NULL THEN 'IGCSE' WHEN asd.curriculum_id = 2 THEN 'NC' WHEN asd.curriculum_id = 3 THEN 'REB' WHEN asd.curriculum_id = 4 THEN 'DRC' WHEN asd.curriculum_id = 5 THEN 'YOUTH' ELSE asd.curriculum_id::text END) AS curriculum,
-      MAX(CASE WHEN asd.school_code = '1' THEN 'Manual' ELSE 'Self' END) AS user_join
+      CASE WHEN u.curriculum = 1 THEN 'IGCSE' WHEN u.curriculum = 2 THEN 'NC' WHEN u.curriculum = 3 THEN 'REB' WHEN u.curriculum = 4 THEN 'DRC' WHEN u.curriculum = 5 THEN 'YOUTH' WHEN u.curriculum IS NULL THEN NULL ELSE u.curriculum::text END AS curriculum,
+      MAX(CASE WHEN LOWER(u.email) LIKE '%@ds.aspire' THEN 'DS' WHEN asd.school_code = '1' THEN 'Manual' ELSE 'Self' END) AS user_join
     FROM users u
     LEFT JOIN additional_signup_data asd ON u.id = asd.user_id
     LEFT JOIN profiles p ON u.id = p.user_id
     WHERE u.created_at BETWEEN '${startStr}' AND '${endStr}'
     AND u.deleted_at IS NULL
     ${testAccountFilter}
-    GROUP BY u.id, u.email, u.created_at, u.updated_at
+    GROUP BY u.id, u.email, u.phone, u.curriculum, u.created_at, u.updated_at
     ORDER BY u.created_at DESC
   `
 
@@ -52,18 +52,18 @@ export async function getAllUsers(db: NodePgDatabase, startDate: string, endDate
 
 export async function getUserById(db: NodePgDatabase, userId: number) {
   const result = await db.execute(sql`
-    SELECT u.id, u.email, u.created_at, u.updated_at,
+    SELECT u.id, COALESCE(NULLIF(u.email, ''), u.phone) AS email, u.created_at, u.updated_at,
            CASE WHEN LOWER(u.role) = 'teacher' THEN 'Teacher' ELSE 'Student' END AS user_type,
            CASE WHEN u.deleted_at IS NOT NULL THEN 'Deleted' WHEN u.verified_at IS NULL THEN 'Not verified' ELSE 'Active' END AS status,
            asd.age,
-           CASE WHEN asd.school_code = '1' THEN 'Manual' ELSE 'Self' END AS user_join,
-           CASE WHEN asd.curriculum_id = 1 OR asd.curriculum_id IS NULL THEN 'IGCSE' WHEN asd.curriculum_id = 2 THEN 'NC' WHEN asd.curriculum_id = 3 THEN 'REB' WHEN asd.curriculum_id = 4 THEN 'DRC' WHEN asd.curriculum_id = 5 THEN 'YOUTH' ELSE asd.curriculum_id::text END AS curriculum,
+           CASE WHEN LOWER(u.email) LIKE '%@ds.aspire' THEN 'DS' WHEN asd.school_code = '1' THEN 'Manual' ELSE 'Self' END AS user_join,
+           CASE WHEN u.curriculum = 1 THEN 'IGCSE' WHEN u.curriculum = 2 THEN 'NC' WHEN u.curriculum = 3 THEN 'REB' WHEN u.curriculum = 4 THEN 'DRC' WHEN u.curriculum = 5 THEN 'YOUTH' WHEN u.curriculum IS NULL THEN NULL ELSE u.curriculum::text END AS curriculum,
            COUNT(DISTINCT p.id) as profile_count
     FROM users u
     LEFT JOIN additional_signup_data asd ON u.id = asd.user_id
     LEFT JOIN profiles p ON u.id = p.user_id AND p.deleted_at IS NULL
     WHERE u.id = ${BigInt(userId)}
-    GROUP BY u.id, u.email, u.created_at, u.updated_at, u.role, u.deleted_at, u.verified_at, asd.age, asd.curriculum_id, asd.school_code
+    GROUP BY u.id, u.email, u.phone, u.curriculum, u.created_at, u.updated_at, u.role, u.deleted_at, u.verified_at, asd.age, asd.school_code
   `)
   return result.rows
 }

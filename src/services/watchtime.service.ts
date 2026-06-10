@@ -8,7 +8,7 @@ export async function getWatchtimeReport(db: NodePgDatabase, startDate: string, 
 
   const query = `
     WITH query1 AS (
-      SELECT u.id, u.email, u.role, asd.school_code,
+      SELECT u.id, COALESCE(NULLIF(u.email, ''), u.phone) AS email, u.role, asd.school_code,
         COUNT(DISTINCT p.id) as profile_count,
         SUM(((CAST(lp.watched AS numeric) * CAST(l.duration as numeric)) / 100)/60) as total_watched_minutes_q1,
         u.verified_at, u.created_at
@@ -24,7 +24,7 @@ export async function getWatchtimeReport(db: NodePgDatabase, startDate: string, 
       GROUP BY u.id, asd.school_code
     ),
     query2 AS (
-      SELECT u.id AS student_id, u.email, u.created_at AS registration_date,
+      SELECT u.id AS student_id, COALESCE(NULLIF(u.email, ''), u.phone) AS email, u.created_at AS registration_date,
         COUNT(DISTINCT p.id) AS profile_count,
         STRING_AGG(DISTINCT c.name, ', ' ORDER BY c.name) AS classroom_names,
         COUNT(DISTINCT c.id) AS number_of_classrooms,
@@ -48,7 +48,7 @@ export async function getWatchtimeReport(db: NodePgDatabase, startDate: string, 
       WHERE u.deleted_at IS NULL
         AND sp.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
         ${testAccountFilter}
-      GROUP BY u.id, u.email, u.created_at
+      GROUP BY u.id, u.email, u.phone, u.created_at
     )
     SELECT COALESCE(q1.id, q2.student_id) AS user_id, COALESCE(q1.email, q2.email) AS email,
       CASE WHEN LOWER(q1.role) = 'teacher' THEN 'Teacher' ELSE 'Student' END AS user_type,
@@ -89,7 +89,7 @@ export async function getZeroActivityReport(db: NodePgDatabase, startDate: strin
   const end = new Date(endDate)
 
   const query = `
-    SELECT u.id AS user_id, COALESCE(p."name", '') AS name, u.email, u.created_at, u.verified_at,
+    SELECT u.id AS user_id, COALESCE(p."name", '') AS name, COALESCE(NULLIF(u.email, ''), u.phone) AS email, u.created_at, u.verified_at,
       CASE WHEN LOWER(u.role) = 'teacher' THEN 'Teacher' ELSE 'Student' END AS user_type,
       COALESCE(MAX(CASE WHEN a.school_code = '1' THEN 'Manual' ELSE 'Self' END), 'Self') AS user_join
     FROM users u
@@ -103,7 +103,7 @@ export async function getZeroActivityReport(db: NodePgDatabase, startDate: strin
         WHERE sp.user_id = u.id AND sp.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
       )
       AND NOT EXISTS (SELECT 1 FROM lesson_profile lp WHERE lp.profile_id = p.id)
-    GROUP BY u.id, p."name", u.email, u.created_at, u.verified_at, u.role
+    GROUP BY u.id, p."name", u.email, u.phone, u.created_at, u.verified_at, u.role
     ORDER BY u.updated_at DESC
   `
 

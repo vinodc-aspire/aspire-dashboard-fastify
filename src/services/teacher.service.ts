@@ -59,8 +59,8 @@ export async function getTeacherReport(db: NodePgDatabase, startDate: string, en
       GROUP BY u.id
     )
     SELECT u.id as teacher_id,
-      COALESCE(asd.student_name, u.email) as teacher_name,
-      u.email as teacher_email,
+      COALESCE(NULLIF((SELECT name FROM profiles WHERE user_id = u.id AND deleted_at IS NULL ORDER BY id LIMIT 1), ''), NULLIF(u.email, '')) as teacher_name,
+      COALESCE(NULLIF(u.email, ''), u.phone) as teacher_email,
       ts.total_classrooms, ts.total_students, ts.total_homeworks, ts.total_lessons,
       COALESCE(la.total_lesson_assignments, 0) as total_lesson_assignments,
       ROUND(COALESCE(wt.total_watch_time, 0)::numeric, 2) as total_watch_time,
@@ -68,7 +68,6 @@ export async function getTeacherReport(db: NodePgDatabase, startDate: string, en
       COALESCE(ta.recent_student_activities, 0) as recent_student_activities,
       COALESCE(hc.homeworks_created, 0) as homeworks_created
     FROM users u
-    LEFT JOIN additional_signup_data asd ON u.id = asd.user_id
     LEFT JOIN teacher_stats ts ON u.id = ts.teacher_id
     LEFT JOIN lesson_assignments la ON u.id = la.teacher_id
     LEFT JOIN watch_time wt ON u.id = wt.teacher_id

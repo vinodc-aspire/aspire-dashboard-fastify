@@ -31,15 +31,14 @@ export async function getClassroomReport(db: NodePgDatabase, startDate: string, 
         ROUND(AVG(CASE WHEN total_homeworks > 0 THEN (completed_homeworks::float / total_homeworks) * 100 ELSE 0 END)) AS avg_completion_rate
       FROM student_homework_completion GROUP BY classroom_id
     )
-    SELECT c.id AS class_id, c.name AS classroom_name, u.email AS teacher_email,
-      COALESCE(asd.student_name, u.email) as teacher_name,
+    SELECT c.id AS class_id, c.name AS classroom_name, COALESCE(NULLIF(u.email, ''), u.phone) AS teacher_email,
+      COALESCE(NULLIF((SELECT name FROM profiles WHERE user_id = u.id AND deleted_at IS NULL ORDER BY id LIMIT 1), ''), NULLIF(u.email, '')) as teacher_name,
       COUNT(DISTINCT cs.student_id) AS total_student,
       COUNT(DISTINCT h.id) AS total_homeworks,
       COUNT(DISTINCT hl.lesson_id) AS total_videos,
       COALESCE(cc.avg_completion_rate, 0) AS homework_completion_rate
     FROM classrooms c
     JOIN users u ON u.id = c.teacher_id
-    LEFT JOIN additional_signup_data asd ON u.id = asd.user_id
     LEFT JOIN classroom_student cs ON cs.classroom_id = c.id
     LEFT JOIN homeworks h ON h.classroom_id = c.id
     LEFT JOIN homework_lesson hl ON hl.homework_id = h.id
@@ -47,7 +46,7 @@ export async function getClassroomReport(db: NodePgDatabase, startDate: string, 
     WHERE u.deleted_at IS NULL AND u.verified_at IS NOT NULL
       AND c.created_at BETWEEN '${start.toISOString()}' AND '${end.toISOString()}'
       ${testAccountFilter}
-    GROUP BY c.id, c.name, u.email, cc.avg_completion_rate, asd.student_name
+    GROUP BY c.id, u.id, c.name, u.email, u.phone, cc.avg_completion_rate
     ORDER BY c.id
   `
 
