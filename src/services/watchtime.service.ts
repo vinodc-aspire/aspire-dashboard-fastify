@@ -8,7 +8,7 @@ export async function getWatchtimeReport(db: NodePgDatabase, startDate: string, 
 
   const query = `
     WITH query1 AS (
-      SELECT u.id, COALESCE(NULLIF(u.email, ''), u.phone) AS email, u.role, asd.school_code,
+      SELECT u.id, COALESCE(NULLIF(u.email, ''), u.phone) AS email, MAX(p.name) AS name, u.role, asd.school_code,
         COUNT(DISTINCT p.id) as profile_count,
         SUM(((CAST(lp.watched AS numeric) * CAST(l.duration as numeric)) / 100)/60) as total_watched_minutes_q1,
         u.verified_at, u.created_at
@@ -24,7 +24,7 @@ export async function getWatchtimeReport(db: NodePgDatabase, startDate: string, 
       GROUP BY u.id, asd.school_code
     ),
     query2 AS (
-      SELECT u.id AS student_id, COALESCE(NULLIF(u.email, ''), u.phone) AS email, u.created_at AS registration_date,
+      SELECT u.id AS student_id, COALESCE(NULLIF(u.email, ''), u.phone) AS email, MAX(p.name) AS name, u.created_at AS registration_date,
         COUNT(DISTINCT p.id) AS profile_count,
         STRING_AGG(DISTINCT c.name, ', ' ORDER BY c.name) AS classroom_names,
         COUNT(DISTINCT c.id) AS number_of_classrooms,
@@ -51,6 +51,7 @@ export async function getWatchtimeReport(db: NodePgDatabase, startDate: string, 
       GROUP BY u.id, u.email, u.phone, u.created_at
     )
     SELECT COALESCE(q1.id, q2.student_id) AS user_id, COALESCE(q1.email, q2.email) AS email,
+      COALESCE(NULLIF(q1.name, ''), NULLIF(q2.name, '')) AS name,
       CASE WHEN LOWER(q1.role) = 'teacher' THEN 'Teacher' ELSE 'Student' END AS user_type,
       CASE WHEN q1.school_code = '1' THEN 'Manual' ELSE 'Self' END AS user_join,
       COALESCE(q1.profile_count, q2.profile_count) AS profile_count,
@@ -68,6 +69,7 @@ export async function getWatchtimeReport(db: NodePgDatabase, startDate: string, 
   return (result.rows as Record<string, unknown>[]).map(item => ({
     user_id: item.user_id ? String(item.user_id) : null,
     email: (item.email as string) ?? '',
+    name: (item.name as string) ?? '',
     user_type: (item.user_type as string) ?? '',
     user_join: (item.user_join as string) ?? '',
     profile_count: item.profile_count != null ? Number(item.profile_count) : null,
