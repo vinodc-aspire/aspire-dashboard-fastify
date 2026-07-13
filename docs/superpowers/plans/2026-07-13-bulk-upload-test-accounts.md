@@ -17,6 +17,7 @@
 - **No automated test framework exists in either repo** (no jest/vitest/mocha configured). Verification steps in this plan are manual: `curl` against the local dev backend, and manual checks in the browser — matching how the rest of this codebase is verified today. Do not add a test framework as part of this feature.
 - Local dev backend (`aspire-dashboard-fastify`, port 3002) is already wired to the **production** database. Manual verification must reuse emails already visible in the local Test Accounts table (e.g. one already marked, to test `already_test_account`) plus one made-up email (to test `not_found`) — never an arbitrary real user's email, to avoid mutating real accounts as a side effect of testing.
 - Frontend dev server expects `NEXT_PUBLIC_API_BASE_URL` in `landau-dashboard/frontend/.env` to point at the local backend (already set to `http://localhost:3002/api` for this session).
+- **Discovered during Task 1 verification:** drizzle's `sql` template expands a JS array parameter into a parenthesized param list (`($1, $2)`), not a single array value — so `ANY(${arr}::text[])` is invalid SQL. Use `IN ${arr}` instead (renders as `IN ($1, $2)` directly). Code below already reflects this fix.
 
 ---
 
@@ -48,7 +49,7 @@ export async function bulkMarkTestAccounts(db: NodePgDatabase, emails: string[])
     SELECT u.id, u.email, asd.student_name AS name, u.is_test_account
     FROM users u
     LEFT JOIN additional_signup_data asd ON u.id = asd.user_id
-    WHERE LOWER(u.email) = ANY(${normalized}::text[])
+    WHERE LOWER(u.email) IN ${normalized}
       AND u.deleted_at IS NULL
   `)
 
@@ -73,7 +74,7 @@ export async function bulkMarkTestAccounts(db: NodePgDatabase, emails: string[])
     await db.execute(sql`
       UPDATE users
       SET is_test_account = true, updated_at = NOW()
-      WHERE id = ANY(${toMarkIds}::bigint[])
+      WHERE id IN ${toMarkIds}
     `)
   }
 

@@ -115,7 +115,7 @@ export async function bulkMarkTestAccounts(db: NodePgDatabase, emails: string[])
     SELECT u.id, u.email, asd.student_name AS name, u.is_test_account
     FROM users u
     LEFT JOIN additional_signup_data asd ON u.id = asd.user_id
-    WHERE LOWER(u.email) = ANY(${normalized}::text[])
+    WHERE LOWER(u.email) IN ${normalized}
       AND u.deleted_at IS NULL
   `)
 
@@ -140,7 +140,7 @@ export async function bulkMarkTestAccounts(db: NodePgDatabase, emails: string[])
     await db.execute(sql`
       UPDATE users
       SET is_test_account = true, updated_at = NOW()
-      WHERE id = ANY(${toMarkIds}::bigint[])
+      WHERE id IN ${toMarkIds}
     `)
   }
 

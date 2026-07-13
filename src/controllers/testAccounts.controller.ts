@@ -81,3 +81,21 @@ export async function toggleTestAccount(
     reply.status(statusCode).send({ error: err.message ?? 'Failed to update test account' })
   }
 }
+
+export async function bulkMarkTestAccounts(
+  request: FastifyRequest<{ Body: { emails: string[] } }>,
+  reply: FastifyReply
+) {
+  const { emails } = request.body
+  if (!Array.isArray(emails) || emails.length === 0) {
+    return reply.status(400).send({ error: 'emails array is required' })
+  }
+  try {
+    const results = await testAccountsService.bulkMarkTestAccounts(request.server.db, emails)
+    reply.send({ results })
+  } catch (error) {
+    const err = error as { statusCode?: number; message?: string }
+    const statusCode = err.statusCode ?? 500
+    reply.status(statusCode).send({ error: err.message ?? 'Failed to bulk mark test accounts' })
+  }
+}

@@ -20,6 +20,17 @@ const UserSearchResult = Type.Object({
   role: Type.Any(),
 })
 
+const BulkMarkResultItem = Type.Object({
+  email: Type.String(),
+  status: Type.Union([
+    Type.Literal('marked'),
+    Type.Literal('already_test_account'),
+    Type.Literal('not_found'),
+  ]),
+  id: Type.Optional(Type.String()),
+  name: Type.Optional(Type.Any()),
+})
+
 export const testAccountsRoutes: FastifyPluginAsyncTypebox = async (app) => {
   // GET /api/test-accounts — list all test accounts
   app.get('/test-accounts', {
@@ -76,4 +87,16 @@ export const testAccountsRoutes: FastifyPluginAsyncTypebox = async (app) => {
       },
     },
   }, testAccountsController.toggleTestAccount)
+
+  // POST /api/test-accounts/bulk-mark — mark multiple existing users as test accounts
+  app.post('/test-accounts/bulk-mark', {
+    schema: {
+      body: Type.Object({ emails: Type.Array(Type.String()) }),
+      response: {
+        200: Type.Object({ results: Type.Array(BulkMarkResultItem) }),
+        400: ErrorResponse,
+        500: ErrorResponse,
+      },
+    },
+  }, testAccountsController.bulkMarkTestAccounts)
 }
