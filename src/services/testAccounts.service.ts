@@ -99,3 +99,59 @@ export async function toggleTestAccount(
   const row = result.rows[0] as Record<string, unknown>
   return { id: String(row.id), email: row.email, is_testaccount: row.is_test_account }
 }
+
+export async function bulkMarkTestAccounts(db: NodePgDatabase, emails: string[]) {
+  const normalized = Array.from(
+    new Set(emails.map(e => e.trim().toLowerCase()).filter(e => e.length > 0))
+  )
+
+  if (normalized.length === 0) {
+    const err = new Error('At least one email is required') as Error & { statusCode: number }
+    err.statusCode = 400
+    throw err
+  }
+
+  const found = await db.execute(sql`
+    SELECT u.id, u.email, asd.student_name AS name, u.is_test_account
+    FROM users u
+    LEFT JOIN additional_signup_data asd ON u.id = asd.user_id
+    WHERE LOWER(u.email) = ANY(${normalized}::text[])
+      AND u.deleted_at IS NULL
+  `)
+
+  const byEmail = new Map<string, { id: string; name: unknown; is_test_account: boolean }>()
+  for (const row of found.rows as Record<string, unknown>[]) {
+    byEmail.set(String(row.email).toLowerCase(), {
+      id: String(row.id),
+      name: row.name,
+      is_test_account: Boolean(row.is_test_account),
+    })
+  }
+
+  const toMarkIds: string[] = []
+  for (const email of normalized) {
+    const match = byEmail.get(email)
+    if (match && !match.is_test_account) {
+      toMarkIds.push(match.id)
+    }
+  }
+
+  if (toMarkIds.length > 0) {
+    await db.execute(sql`
+      UPDATE users
+      SET is_test_account = true, updated_at = NOW()
+      WHERE id = ANY(${toMarkIds}::bigint[])
+    `)
+  }
+
+  return normalized.map(email => {
+    const match = byEmail.get(email)
+    if (!match) {
+      return { email, status: 'not_found' as const }
+    }
+    if (match.is_test_account) {
+      return { email, status: 'already_test_account' as const, id: match.id, name: match.name ?? email }
+    }
+    return { email, status: 'marked' as const, id: match.id, name: match.name ?? email }
+  })
+}
