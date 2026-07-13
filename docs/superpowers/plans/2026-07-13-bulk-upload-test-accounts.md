@@ -445,7 +445,7 @@ export default function BulkUploadDialog({
                     </tr>
                   </thead>
                   <tbody>
-                    {results.map((r) => (
+                    {results!.map((r) => (
                       <tr key={r.email} className="border-t">
                         <td className="p-2">{r.email}</td>
                         <td className="p-2">
