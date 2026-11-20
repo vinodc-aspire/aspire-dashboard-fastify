@@ -15,6 +15,8 @@ export async function getAllUsers(db: NodePgDatabase, startDate: string, endDate
   const startStr = formatDateForPostgres(start)
   const endStr = formatDateForPostgres(end)
 
+  // Curriculum labels come from the curriculums table (short_name), so a new
+  // curriculum shows its name without a code change.
   const query = `
     SELECT
       u.id,
@@ -24,15 +26,16 @@ export async function getAllUsers(db: NodePgDatabase, startDate: string, endDate
       MAX(CASE WHEN u.deleted_at IS NOT NULL THEN 'Deleted' WHEN u.verified_at IS NULL THEN 'Not verified' ELSE 'Active' END) AS status,
       u.created_at,
       u.updated_at,
-      CASE WHEN u.curriculum = 1 THEN 'IGCSE' WHEN u.curriculum = 2 THEN 'NC' WHEN u.curriculum = 3 THEN 'REB' WHEN u.curriculum = 4 THEN 'DRC' WHEN u.curriculum = 5 THEN 'YOUTH' WHEN u.curriculum IS NULL THEN NULL ELSE u.curriculum::text END AS curriculum,
+      COALESCE(cur.short_name, CASE u.curriculum WHEN 3 THEN 'REB' WHEN 4 THEN 'DRC' END, u.curriculum::text) AS curriculum,
       MAX(CASE WHEN LOWER(u.email) LIKE '%@ds.aspire' THEN 'DS' WHEN asd.school_code = '1' THEN 'Manual' ELSE 'Self' END) AS user_join
     FROM users u
     LEFT JOIN additional_signup_data asd ON u.id = asd.user_id
     LEFT JOIN profiles p ON u.id = p.user_id
+    LEFT JOIN curriculums cur ON cur.id = u.curriculum
     WHERE u.created_at BETWEEN '${startStr}' AND '${endStr}'
     AND u.deleted_at IS NULL
     ${testAccountFilter}
-    GROUP BY u.id, u.email, u.phone, u.curriculum, u.created_at, u.updated_at
+    GROUP BY u.id, u.email, u.phone, u.curriculum, cur.short_name, u.created_at, u.updated_at
     ORDER BY u.created_at DESC
   `
 
@@ -57,13 +60,14 @@ export async function getUserById(db: NodePgDatabase, userId: number) {
            CASE WHEN u.deleted_at IS NOT NULL THEN 'Deleted' WHEN u.verified_at IS NULL THEN 'Not verified' ELSE 'Active' END AS status,
            asd.age,
            CASE WHEN LOWER(u.email) LIKE '%@ds.aspire' THEN 'DS' WHEN asd.school_code = '1' THEN 'Manual' ELSE 'Self' END AS user_join,
-           CASE WHEN u.curriculum = 1 THEN 'IGCSE' WHEN u.curriculum = 2 THEN 'NC' WHEN u.curriculum = 3 THEN 'REB' WHEN u.curriculum = 4 THEN 'DRC' WHEN u.curriculum = 5 THEN 'YOUTH' WHEN u.curriculum IS NULL THEN NULL ELSE u.curriculum::text END AS curriculum,
+           COALESCE(cur.short_name, CASE u.curriculum WHEN 3 THEN 'REB' WHEN 4 THEN 'DRC' END, u.curriculum::text) AS curriculum,
            COUNT(DISTINCT p.id) as profile_count
     FROM users u
     LEFT JOIN additional_signup_data asd ON u.id = asd.user_id
     LEFT JOIN profiles p ON u.id = p.user_id AND p.deleted_at IS NULL
+    LEFT JOIN curriculums cur ON cur.id = u.curriculum
     WHERE u.id = ${BigInt(userId)}
-    GROUP BY u.id, u.email, u.phone, u.curriculum, u.created_at, u.updated_at, u.role, u.deleted_at, u.verified_at, asd.age, asd.school_code
+    GROUP BY u.id, u.email, u.phone, u.curriculum, cur.short_name, u.created_at, u.updated_at, u.role, u.deleted_at, u.verified_at, asd.age, asd.school_code
   `)
   return result.rows
 }

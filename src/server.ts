@@ -14,6 +14,7 @@ import { leaderboardRoutes } from "./routes/leaderboard.routes";
 import { dataPointRoutes } from "./routes/dataPoint.routes";
 import { dataUserRoutes } from "./routes/dataUser.routes";
 import { testAccountsRoutes } from "./routes/testAccounts.routes";
+import { curriculumsRoutes } from "./routes/curriculums.routes";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -63,6 +64,7 @@ export async function buildServer() {
   app.register(dataPointRoutes, { prefix: "/api" });
   app.register(dataUserRoutes, { prefix: "/api" });
   app.register(testAccountsRoutes, { prefix: "/api" });
+  app.register(curriculumsRoutes, { prefix: "/api" });
 
   app.setNotFoundHandler((request, reply) => {
     reply.status(404).send({
