@@ -2,6 +2,17 @@ import { sql } from 'drizzle-orm'
 import { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { testAccountFilter } from './filters'
 
+// Effective curriculum: the first non-deleted profile that has one, else users.curriculum.
+// profiles has no index on user_id, so read it once (DISTINCT ON) instead of a per-user LATERAL lookup.
+const CURRICULUM_JOINS = `
+    LEFT JOIN (
+      SELECT DISTINCT ON (pr.user_id) pr.user_id, pr.curriculum FROM profiles pr
+      WHERE pr.deleted_at IS NULL AND pr.curriculum IS NOT NULL
+      ORDER BY pr.user_id, pr.id
+    ) pc ON pc.user_id = u.id
+    LEFT JOIN curriculums cur ON cur.id = COALESCE(pc.curriculum, u.curriculum)`
+const CURRICULUM_LABEL = `COALESCE(cur.short_name, CASE COALESCE(pc.curriculum, u.curriculum) WHEN 3 THEN 'REB' WHEN 4 THEN 'DRC' END, COALESCE(pc.curriculum, u.curriculum)::text)`
+
 function formatDateForPostgres(date: Date): string {
   const pad = (num: number) => String(num).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
@@ -17,6 +28,8 @@ export async function getAllUsers(db: NodePgDatabase, startDate: string, endDate
 
   // Curriculum labels come from the curriculums table (short_name), so a new
   // curriculum shows its name without a code change.
+  // Curriculum lives on the profile now (DS signup stopped setting users.curriculum
+  // in Oct 2026); fall back to users.curriculum for older accounts.
   const query = `
     SELECT
       u.id,
@@ -26,16 +39,16 @@ export async function getAllUsers(db: NodePgDatabase, startDate: string, endDate
       MAX(CASE WHEN u.deleted_at IS NOT NULL THEN 'Deleted' WHEN u.verified_at IS NULL THEN 'Not verified' ELSE 'Active' END) AS status,
       u.created_at,
       u.updated_at,
-      COALESCE(cur.short_name, CASE u.curriculum WHEN 3 THEN 'REB' WHEN 4 THEN 'DRC' END, u.curriculum::text) AS curriculum,
+      ${CURRICULUM_LABEL} AS curriculum,
       MAX(CASE WHEN LOWER(u.email) LIKE '%@ds.aspire' THEN 'DS' WHEN asd.school_code = '1' THEN 'Manual' ELSE 'Self' END) AS user_join
     FROM users u
     LEFT JOIN additional_signup_data asd ON u.id = asd.user_id
     LEFT JOIN profiles p ON u.id = p.user_id
-    LEFT JOIN curriculums cur ON cur.id = u.curriculum
+    ${CURRICULUM_JOINS}
     WHERE u.created_at BETWEEN '${startStr}' AND '${endStr}'
     AND u.deleted_at IS NULL
     ${testAccountFilter}
-    GROUP BY u.id, u.email, u.phone, u.curriculum, cur.short_name, u.created_at, u.updated_at
+    GROUP BY u.id, u.email, u.phone, u.curriculum, pc.curriculum, cur.short_name, u.created_at, u.updated_at
     ORDER BY u.created_at DESC
   `
 
@@ -60,14 +73,14 @@ export async function getUserById(db: NodePgDatabase, userId: number) {
            CASE WHEN u.deleted_at IS NOT NULL THEN 'Deleted' WHEN u.verified_at IS NULL THEN 'Not verified' ELSE 'Active' END AS status,
            asd.age,
            CASE WHEN LOWER(u.email) LIKE '%@ds.aspire' THEN 'DS' WHEN asd.school_code = '1' THEN 'Manual' ELSE 'Self' END AS user_join,
-           COALESCE(cur.short_name, CASE u.curriculum WHEN 3 THEN 'REB' WHEN 4 THEN 'DRC' END, u.curriculum::text) AS curriculum,
+           ${sql.raw(CURRICULUM_LABEL)} AS curriculum,
            COUNT(DISTINCT p.id) as profile_count
     FROM users u
     LEFT JOIN additional_signup_data asd ON u.id = asd.user_id
     LEFT JOIN profiles p ON u.id = p.user_id AND p.deleted_at IS NULL
-    LEFT JOIN curriculums cur ON cur.id = u.curriculum
+    ${sql.raw(CURRICULUM_JOINS)}
     WHERE u.id = ${BigInt(userId)}
-    GROUP BY u.id, u.email, u.phone, u.curriculum, cur.short_name, u.created_at, u.updated_at, u.role, u.deleted_at, u.verified_at, asd.age, asd.school_code
+    GROUP BY u.id, u.email, u.phone, u.curriculum, pc.curriculum, cur.short_name, u.created_at, u.updated_at, u.role, u.deleted_at, u.verified_at, asd.age, asd.school_code
   `)
   return result.rows
 }
